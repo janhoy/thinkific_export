@@ -81,9 +81,9 @@ hosted on **Wistia**. `wistia_download_url()` handles them: it fetches the lesso
 (a videoproxy player page — plain `requests`, no CORS issue), scrapes the Wistia media id from the
 HTML, then reads Wistia's public media JSON (`fast.wistia.com/embed/medias/<id>.json`) and returns a
 downloadable MP4 asset (preferring the `original` source upload, else the largest MP4 rendition).
-`_process_lesson` tries `video.url` first and only falls back to Wistia on failure. On the
-`solrtraining` site ~14 of the 29 videos require this path — a naive S3-only download silently gets
-only ~15. `video.playUrl` itself is a player HTML page, never the media.
+`_process_lesson` tries `video.url` first and only falls back to Wistia on failure. In practice a
+large fraction of a site's videos can require this path — a naive S3-only download silently misses
+the Wistia-hosted ones. `video.playUrl` itself is a player HTML page, never the media.
 
 ### Output layout (all under `work_dir`)
 
@@ -106,9 +106,10 @@ re-import.
 
 ## Conventions specific to this codebase
 
-- **The 4 real courses** on the `solrtraining` site total 29 `Video` lessons; the admin video
-  library (`site.videos`) holds ~48, the extra ~20 being old/unused uploads not attached to any
-  course. So a full export producing 29 videos is correct — don't expect to match the library count.
+- **Video counts won't match the library:** the admin video library (`site.videos`) typically holds
+  more videos than the courses reference, because old/unused uploads linger there without being
+  attached to any course. A full export downloads only the videos referenced by lessons, so expect
+  the exported count to be lower than the library count — that's correct.
 - **`safe_name()` sanitizes every filename** written to disk; keep new file writes routed through it.
 - **Idempotent downloads:** `stream_download` skips an existing non-empty destination and writes
   via a `.part` temp file first, so re-running resumes rather than redownloads.
