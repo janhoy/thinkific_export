@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Saved Thinkific login session — SECRET, never commit
+.thinkific_session.json
+
+# Default export output directory
+/thinkific_export/
