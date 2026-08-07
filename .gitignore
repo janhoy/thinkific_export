@@ -2,8 +2,13 @@
 __pycache__/
 *.pyc
 
+# uv virtual environment (uv.lock IS committed)
+.venv/
+
 # Saved Thinkific login session — SECRET, never commit
 .thinkific_session.json
 
-# Default export output directory
+# Export output directories
 /thinkific_export/
+/export/
+/out/
