@@ -89,7 +89,7 @@ would create, without touching Frappe or uploading anything.
 | `--frappe-url URL` | Frappe site URL (or `FRAPPE_URL`). |
 | `--api-key` / `--api-secret` | Frappe API credentials (or `FRAPPE_API_KEY` / `FRAPPE_API_SECRET`). |
 | `--instructor EMAIL` | User set as course instructor (or `FRAPPE_INSTRUCTOR`; else the API key's own user). |
-| `--video-mode {frappe,vimeo,link}` | How to handle videos (see below). Default `frappe`. |
+| `--video-mode {frappe,vimeo,link,none}` | How to handle videos (see below). Default `frappe`. |
 | `--publish` | Mark the course published (default: draft). |
 | `--private-files` | Upload assets as **private** Frappe files (default: public). |
 | `--update-existing` | Re-process lessons that already exist (default: skip them). |
@@ -105,6 +105,7 @@ would create, without touching Frappe or uploading anything.
 | `frappe` (default) | The local MP4 is uploaded to the Frappe site and embedded in the lesson with `{{ Video("/files/...") }}`. Simple, but large media lives on the LMS server. |
 | `vimeo` | The local MP4 is uploaded to **Vimeo** as a non-public video and the Vimeo player URL is embedded with `{{ Embed("...\|\|\|https://player.vimeo.com/video/ID") }}`. Keeps big files off the LMS. Requires `uv sync --extra vimeo` and `VIMEO_ACCESS_TOKEN`. |
 | `link` | Nothing is uploaded; the manifest's source `video_url` is embedded as-is. Fast for a structural import (note: Thinkific S3 URLs are signed and may expire). |
+| `none` | The video lessons are created but get **no video embed** at all. Useful to import the structure now and add the videos later (e.g. while your server's upload-size limit is still being raised) by re-running with `--update-existing`. |
 
 If a video lesson has no local file on disk (e.g. the export ran with
 `--no-videos`), the importer records the source URL instead of uploading.

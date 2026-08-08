@@ -21,7 +21,7 @@ Two things make it safe to re-run:
   ``Lesson Reference`` child tables), so chapters and lessons end up in the same
   order as on Thinkific regardless of what already existed.
 
-Video handling has three modes (``--video-mode``):
+Video handling has four modes (``--video-mode``):
 
 * ``frappe`` (default) — upload the MP4 to Frappe and embed it with the
   ``{{ Video("...") }}`` lesson macro.
@@ -29,6 +29,8 @@ Video handling has three modes (``--video-mode``):
   embed the Vimeo player URL instead (keeps large media off the LMS server).
 * ``link`` — do not upload anything; embed the source ``video_url`` from the
   manifest as-is (useful for a quick structural import).
+* ``none`` — create the video lessons with no video embed at all (add the
+  videos later by re-running with ``--update-existing``).
 
 Auth is an API key + secret generated on a Frappe User (Settings → API Access).
 
@@ -108,6 +110,27 @@ def strip_html(s: Optional[str]) -> str:
 def macro(name: str, arg: str) -> str:
     """A Frappe LMS markdown macro, e.g. Video("/files/x.mp4")."""
     return f'{{{{ {name}("{arg}") }}}}'
+
+
+def quiz_content(quiz_name: str) -> str:
+    """EditorJS `content` for a lesson that embeds a quiz.
+
+    Frappe LMS renders `content` in preference to `body`, and only wires
+    LMS Quiz.course / LMS Quiz.lesson (needed for a quiz to be accessible to
+    enrolled students) when the quiz is embedded as a `content` block — the
+    Course Lesson save hook `save_lesson_details_in_quiz` scans `content`, not
+    `body` or the `quiz_id` field. So a quiz lesson needs this block, not just a
+    `{{ Quiz(...) }}` body macro. Block ids are derived from the quiz name so
+    the content is stable across re-imports (idempotent updates)."""
+    bid = re.sub(r"[^a-zA-Z0-9]", "", quiz_name)[:20] or "quiz"
+    return json.dumps({
+        "time": 0,
+        "blocks": [
+            {"id": f"p{bid}", "type": "paragraph", "data": {"text": ""}},
+            {"id": f"q{bid}", "type": "quiz", "data": {"quiz": quiz_name}},
+        ],
+        "version": "2.29.0",
+    })
 
 
 def host_of(url: str) -> str:
@@ -422,6 +445,10 @@ class Importer:
                                "body": body}
         if quiz_id:
             doc["quiz_id"] = quiz_id
+            # Embed the quiz as a `content` block too, so it renders and the
+            # Course Lesson save hook wires the quiz's course/lesson (required
+            # for enrolled students to access it). See quiz_content().
+            doc["content"] = quiz_content(quiz_id)
         if existing:
             print(f"    ~ Updating lesson '{title}'")
             self.fr.update("Course Lesson", existing, doc)
@@ -463,6 +490,8 @@ class Importer:
     def _video_embed(self, lesson: dict) -> Optional[str]:
         mode = self.opts.video_mode
         title = lesson.get("name") or "Video"
+        if mode == "none":
+            return None
         if mode == "link":
             url = lesson.get("video_url")
             return macro("Video", url) if url else None
@@ -503,6 +532,14 @@ class Importer:
         questions = (((detail.get("questions") or {}).get("edges")) or [])
         if not questions:
             return None
+        title = f"{lesson.get('name') or 'Quiz'}"
+        # Reuse an existing quiz of the same title (resume/idempotency, like
+        # courses/chapters/lessons) instead of creating a duplicate + a whole
+        # new set of LMS Question docs on every re-run.
+        existing = self._find("LMS Quiz", {"title": title})
+        if existing:
+            print(f"      quiz '{title}' exists ({existing}) — reusing.")
+            return existing
         q_rows: list[dict] = []
         for qe in questions:
             qn = qe.get("node") or {}
@@ -519,7 +556,6 @@ class Importer:
                 qdoc[f"is_correct_{i}"] = 1 if c.get("credited") else 0
             q_name = self.fr.create("LMS Question", qdoc)
             q_rows.append({"question": q_name, "marks": 1})
-        title = f"{lesson.get('name') or 'Quiz'}"
         quiz_doc = {
             "title": title,
             "passing_percentage": detail.get("passingScore") or 60,
@@ -569,11 +605,12 @@ def main() -> None:
     ap.add_argument("--instructor", default=None,
                     help="User (email) to set as course instructor. Defaults to "
                          "FRAPPE_INSTRUCTOR, else the API key's own user.")
-    ap.add_argument("--video-mode", choices=["frappe", "vimeo", "link"],
+    ap.add_argument("--video-mode", choices=["frappe", "vimeo", "link", "none"],
                     default="frappe",
                     help="frappe: upload MP4s to the LMS (default). vimeo: upload "
                          "to Vimeo (non-public) and embed. link: embed the source "
-                         "URL, upload nothing.")
+                         "URL, upload nothing. none: create the video lessons with "
+                         "no video embed (add videos later with --update-existing).")
     ap.add_argument("--publish", action="store_true",
                     help="Mark the created course as published (default: draft).")
     ap.add_argument("--private-files", action="store_true",
