@@ -401,11 +401,16 @@ class Importer:
                 self.fr.update("LMS Course", existing, {"published": 1})
             return existing
         print(f"> Creating course '{title}'")
+        # Prefer the real Thinkific course description; fall back to a placeholder
+        # only when the export didn't capture one.
+        desc = strip_html(c.get("description") or "").strip()
+        short = (desc or strip_html(c.get("name")) or title)[:140]
+        body = (f"<p>{c.get('description')}</p>" if desc
+                else f"<p>Imported from Thinkific (slug: {c.get('slug', '')}).</p>")
         doc = {
             "title": title,
-            "short_introduction": (strip_html(c.get("name")) or title)[:140],
-            "description": f"<p>Imported from Thinkific "
-                           f"(slug: {c.get('slug', '')}).</p>",
+            "short_introduction": short,
+            "description": body,
             "published": 1 if self.opts.publish else 0,
             "instructors": [{"instructor": self.instructor}],
         }

@@ -172,7 +172,7 @@ def wistia_download_url(play_url: str, session: requests.Session) -> Optional[st
 _GQL_COURSES = (
     "query($first:Int,$after:String){courses(first:$first,after:$after){"
     "pageInfo{hasNextPage endCursor} edges{node{id slug type "
-    "cardImageUrl defaultCourseCardImageUrl "
+    "description cardImageUrl defaultCourseCardImageUrl "
     "product{productableName status} instructor{fullName}}}}}"
 )
 # Chapters + lessons for one course. `lessons` is a union, so common fields come
@@ -326,7 +326,8 @@ def _export_course(course: dict, gql, cfg: Config, media_dir: Path,
     manifest: dict[str, Any] = {
         "course": {"id": int(cid) if cid.isdigit() else cid, "name": title,
                    "slug": slug, "status": (course.get("product") or {}).get("status"),
-                   "instructor": (course.get("instructor") or {}).get("fullName")},
+                   "instructor": (course.get("instructor") or {}).get("fullName"),
+                   "description": (course.get("description") or "").strip() or None},
         "chapters": [],
         "summary": {"downloaded": 0, "manual_required": 0, "no_asset": 0},
     }
@@ -473,6 +474,7 @@ course:
   slug: example-course-title
   status: published                # published | draft
   instructor: Jane Doe
+  description: Short course description/subtitle from Thinkific  # or null
   image_url: https://.../course_card.png  # source URL of the course card image (omitted if none/default)
   image_file: content/course_thumbnail.png  # local path, or null if the download failed
 chapters:                          # ordered list; render in array order
