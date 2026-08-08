@@ -172,6 +172,7 @@ def wistia_download_url(play_url: str, session: requests.Session) -> Optional[st
 _GQL_COURSES = (
     "query($first:Int,$after:String){courses(first:$first,after:$after){"
     "pageInfo{hasNextPage endCursor} edges{node{id slug type "
+    "cardImageUrl defaultCourseCardImageUrl "
     "product{productableName status} instructor{fullName}}}}}"
 )
 # Chapters + lessons for one course. `lessons` is a union, so common fields come
@@ -330,6 +331,15 @@ def _export_course(course: dict, gql, cfg: Config, media_dir: Path,
         "summary": {"downloaded": 0, "manual_required": 0, "no_asset": 0},
     }
 
+    # Course card image (Settings -> course card image). Skip the site-wide
+    # generic default so we only capture a real, course-specific thumbnail.
+    card = course.get("cardImageUrl")
+    if card and card != course.get("defaultCourseCardImageUrl"):
+        manifest["course"]["image_url"] = card
+        idest = content_dir / f"course_thumbnail{guess_ext(card) or '.png'}"
+        manifest["course"]["image_file"] = (
+            f"content/{idest.name}" if stream_download(card, idest, dl) else None)
+
     chapters = gql(_GQL_LESSONS, {"id": course["id"], "first": 1000})["course"]["chapters"]
     n = 0
     for ce in chapters["edges"]:
@@ -463,6 +473,8 @@ course:
   slug: example-course-title
   status: published                # published | draft
   instructor: Jane Doe
+  image_url: https://.../course_card.png  # source URL of the course card image (omitted if none/default)
+  image_file: content/course_thumbnail.png  # local path, or null if the download failed
 chapters:                          # ordered list; render in array order
   - position: 0                    # chapter order within course (0-based, from Thinkific)
     id: '742860'                   # numeric chapter id

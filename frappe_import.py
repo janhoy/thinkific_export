@@ -409,6 +409,16 @@ class Importer:
             "published": 1 if self.opts.publish else 0,
             "instructors": [{"instructor": self.instructor}],
         }
+        # Course thumbnail (LMS Course.image, the "Preview Image"). Uploaded as a
+        # public file so it renders on the course card; only set on a freshly
+        # created course (an existing course's fields are left untouched).
+        img_rel = c.get("image_file")
+        if img_rel:
+            p = asset_path(self.dir, img_rel)
+            if p:
+                doc["image"] = self.fr.upload_file(p, is_private=False)
+            else:
+                print(f"  ! course image missing on disk: {img_rel}")
         return self.fr.create("LMS Course", doc)
 
     def _ensure_chapter(self, course_name: str, chapter: dict) -> str:

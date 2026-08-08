@@ -95,7 +95,8 @@ Everything is written under `--work-dir`:
 │   └── content/
 │       ├── NNN_<lesson>.json          # raw GraphQL payload per lesson
 │       ├── NNN_<lesson>.pdf|.mp3       # downloaded PDF / audio asset
-│       └── NNN_<lesson>_thumbnail.jpg  # video poster image
+│       ├── NNN_<lesson>_thumbnail.jpg  # video poster image
+│       └── course_thumbnail.png        # the course card image (if the course has one)
 ├── _videos/
 │   ├── <original name>.mp4            # every downloaded video (flat, de-duplicated)
 │   └── videos_manifest.yaml           # flat index of downloaded videos
@@ -104,7 +105,9 @@ Everything is written under `--work-dir`:
 
 Each lesson in `manifest.yaml` carries a `download_status` of `downloaded`,
 `manual_required`, or `no_asset`, and video lessons additionally record
-`video_url`, `video_file`, and thumbnail paths. **`FORMAT.md`, generated into
+`video_url`, `video_file`, and thumbnail paths. The `course` block records
+`image_url` / `image_file` for the course card image (when the course has a
+custom one). **`FORMAT.md`, generated into
 every export, documents every file and field** — including the lesson types, the
 id scheme, and a step-by-step recipe for re-importing into another LMS.
 

@@ -114,7 +114,7 @@ If a video lesson has no local file on disk (e.g. the export ran with
 
 | Thinkific | Frappe LMS |
 |-----------|------------|
-| Course | `LMS Course` (title, one instructor, draft unless `--publish`) |
+| Course | `LMS Course` (title, one instructor, draft unless `--publish`; the exported course card image is uploaded to `image`, the Preview Image) |
 | Chapter | `Course Chapter` (linked to the course; ordered via `Chapter Reference`) |
 | Lesson | `Course Lesson` (linked to the chapter; ordered via `Lesson Reference`) |
 | Text lesson | lesson `body` = the lesson's HTML |
@@ -162,8 +162,10 @@ to the lesson via `quiz_id` so it renders under the lesson.
   uploaded again (Frappe does not de-duplicate `File`s by content).
 - **Structure-only lesson types** (Survey, Exam, Assignment, Presentation, …) have
   no captured body in the export, so they become title/type-only lessons.
-- **Course metadata** (description, image, category, tags) is not present in the
-  export; the course gets a minimal placeholder description. If you created the
-  course by hand first, its existing fields are left untouched.
+- **Course metadata** (description, category, tags) is mostly not present in the
+  export; the course gets a minimal placeholder description. The course card
+  image *is* exported (`course.image_file`) and uploaded to the course's Preview
+  Image — but only when the course is freshly created. If you created the course
+  by hand first, its existing fields (including the image) are left untouched.
 - Per-question explanations from Thinkific aren't carried over (Frappe's
   `LMS Question` has per-option, not per-question, explanation fields).
