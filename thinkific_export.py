@@ -376,6 +376,7 @@ def _process_lesson(les: dict, n: int, gql, content_dir: Path, media_dir: Path,
 
     entry: dict[str, Any] = {
         "position": n, "id": _gid_num(les["id"]), "name": name, "type": ltype,
+        "free": bool(les.get("free")),  # free preview lesson (Thinkific "free")
         "raw": f"content/{base}.json", "file": None, "download_status": "no_asset",
     }
 
@@ -486,6 +487,7 @@ chapters:                          # ordered list; render in array order
         id: '2596056'             # numeric lesson (content) id
         name: Chapter 2 Quiz
         type: Quiz                # lesson type (see §5)
+        free: false               # true if this is a free-preview lesson (free even in a paid course)
         raw: content/011_Chapter 2 Quiz.json   # path to full per-lesson JSON
         file: null                # path to a downloaded PDF/audio asset, or null
         download_status: no_asset # downloaded | manual_required | no_asset
