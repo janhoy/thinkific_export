@@ -414,6 +414,15 @@ class Importer:
             "published": 1 if self.opts.publish else 0,
             "instructors": [{"instructor": self.instructor}],
         }
+        # Paid course: mirror the Thinkific price onto the LMS "Paid Course"
+        # toggle. Frappe requires a positive amount + a currency when paid.
+        price = c.get("price") or {}
+        if price.get("is_paid") and (price.get("amount") or 0) > 0 and price.get("currency"):
+            doc["paid_course"] = 1
+            doc["course_price"] = price["amount"]
+            doc["currency"] = price["currency"]
+            if price["currency"] == "USD":
+                doc["amount_usd"] = price["amount"]
         # Course thumbnail (LMS Course.image, the "Preview Image"). Uploaded as a
         # public file so it renders on the course card; only set on a freshly
         # created course (an existing course's fields are left untouched).

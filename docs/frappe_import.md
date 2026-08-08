@@ -114,7 +114,7 @@ If a video lesson has no local file on disk (e.g. the export ran with
 
 | Thinkific | Frappe LMS |
 |-----------|------------|
-| Course | `LMS Course` (title, one instructor, draft unless `--publish`; the exported course card image is uploaded to `image`, the Preview Image) |
+| Course | `LMS Course` (title, one instructor, draft unless `--publish`; the exported course card image is uploaded to `image`, the Preview Image; a paid Thinkific price sets `paid_course` + `course_price` + `currency`) |
 | Chapter | `Course Chapter` (linked to the course; ordered via `Chapter Reference`) |
 | Lesson | `Course Lesson` (linked to the chapter; ordered via `Lesson Reference`) |
 | Text lesson | lesson `body` = the lesson's HTML |
@@ -167,7 +167,10 @@ to the lesson via `quiz_id` so it renders under the lesson.
   its "About this course" body; if the export didn't capture one, a minimal
   placeholder is used instead. Category and tags are not exported. The course
   card image *is* exported (`course.image_file`) and uploaded to the course's
-  Preview Image. All of this is only set when the course is **freshly created**;
-  if you created the course by hand first, its existing fields are left untouched.
+  Preview Image. A paid Thinkific course (`course.price.is_paid`) sets the LMS
+  **Paid Course** toggle with its `course_price` and `currency` (the ISO code is
+  parsed from Thinkific's display price, e.g. `$349.00` → `USD`). All of this is
+  only set when the course is **freshly created**; if you created the course by
+  hand first, its existing fields are left untouched.
 - Per-question explanations from Thinkific aren't carried over (Frappe's
   `LMS Question` has per-option, not per-question, explanation fields).

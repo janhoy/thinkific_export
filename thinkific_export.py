@@ -102,6 +102,25 @@ def guess_ext(url: str, resp_ct: Optional[str] = None) -> str:
     return ""
 
 
+_CURRENCY_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "kr": "NOK",
+                     "¥": "JPY", "₹": "INR", "R$": "BRL", "A$": "AUD", "C$": "CAD"}
+
+
+def currency_from_display(display: Optional[str]) -> Optional[str]:
+    """Best-effort ISO currency code from a Thinkific ``displayPrice`` string,
+    e.g. '$349.00' -> 'USD', 'NOK 990' -> 'NOK'. Thinkific has no currency field
+    on ProductPrice, so the symbol/code in displayPrice is the only signal."""
+    if not display:
+        return None
+    m = re.match(r"\s*([A-Z]{3})\b", display)  # explicit code, e.g. "NOK 990"
+    if m:
+        return m.group(1)
+    for sym, code in sorted(_CURRENCY_SYMBOLS.items(), key=lambda x: -len(x[0])):
+        if sym in display:
+            return code
+    return None
+
+
 def filename_from_url(url: str) -> str:
     base = url.split("?", 1)[0].rsplit("/", 1)[-1] or "asset"
     base = re.sub(r"[^A-Za-z0-9._-]+", "_", base).strip("._") or "asset"
@@ -173,7 +192,8 @@ _GQL_COURSES = (
     "query($first:Int,$after:String){courses(first:$first,after:$after){"
     "pageInfo{hasNextPage endCursor} edges{node{id slug type "
     "description cardImageUrl defaultCourseCardImageUrl "
-    "product{productableName status} instructor{fullName}}}}}"
+    "product{productableName status primaryPrice{price displayPrice type}} "
+    "instructor{fullName}}}}}"
 )
 # Chapters + lessons for one course. `lessons` is a union, so common fields come
 # from LessonInterface and `id` from each concrete lesson type.
@@ -313,6 +333,24 @@ def export(cfg: Config, only_course: Optional[int] = None,
     print("\nDone. Each manifest.yaml links every lesson to its downloaded file.")
 
 
+def _course_price(course: dict) -> Optional[dict]:
+    """Course price from Thinkific's ``product.primaryPrice`` (or None if the
+    product has no price). ``is_paid`` is true for a real one-time/recurring
+    price; a ``free`` product is recorded but marked not paid."""
+    pp = ((course.get("product") or {}).get("primaryPrice")) or {}
+    ptype = pp.get("type")
+    if not ptype:
+        return None
+    amount = pp.get("price")
+    return {
+        "amount": amount,
+        "currency": currency_from_display(pp.get("displayPrice")),
+        "type": ptype,                       # free | one-time | subscription | ...
+        "display": pp.get("displayPrice"),
+        "is_paid": bool(ptype != "free" and (amount or 0) > 0),
+    }
+
+
 def _export_course(course: dict, gql, cfg: Config, media_dir: Path,
                    dl: requests.Session, saved_videos: dict, skip_videos: bool) -> None:
     cid = _gid_num(course["id"])
@@ -327,7 +365,8 @@ def _export_course(course: dict, gql, cfg: Config, media_dir: Path,
         "course": {"id": int(cid) if cid.isdigit() else cid, "name": title,
                    "slug": slug, "status": (course.get("product") or {}).get("status"),
                    "instructor": (course.get("instructor") or {}).get("fullName"),
-                   "description": (course.get("description") or "").strip() or None},
+                   "description": (course.get("description") or "").strip() or None,
+                   "price": _course_price(course)},
         "chapters": [],
         "summary": {"downloaded": 0, "manual_required": 0, "no_asset": 0},
     }
@@ -476,6 +515,12 @@ course:
   status: published                # published | draft
   instructor: Jane Doe
   description: Short course description/subtitle from Thinkific  # or null
+  price:                           # from Thinkific product.primaryPrice, or null
+    amount: 349.0                  # numeric price
+    currency: USD                  # ISO code parsed from the display price
+    type: one-time                 # free | one-time | subscription | ...
+    display: $349.00               # Thinkific's formatted price string
+    is_paid: true                  # true for a real paid price (false when free)
   image_url: https://.../course_card.png  # source URL of the course card image (omitted if none/default)
   image_file: content/course_thumbnail.png  # local path, or null if the download failed
 chapters:                          # ordered list; render in array order
